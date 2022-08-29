@@ -30,3 +30,16 @@
 *.exe
 *.out
 *.app
+
+# cmake folder
+build/**
+**/build/**
+CMakeFiles/**
+**CMakeFiles/**
+
+# vscode
+.cache/**
+.vscode/**
+
+#mac
+**/.DS_Store
