@@ -3,6 +3,7 @@
 
 
 int main() {
-    process_playground::demo();
+    //process_fork::demo();
+    process_kill::demo();
     //pipe_playground::demo();
 }
