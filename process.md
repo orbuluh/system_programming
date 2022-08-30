@@ -22,3 +22,12 @@
   - Communication between threads is much faster than interprocess communications.
   - A process can be spawned with lower privileges (through `setrlimit`) to limit the resources available to untrusted code.
   - A program designed in processes is **more segregated** than one designed in threads.
+
+- A process has a **PID** as its unique identifier. It also belongs to a group that has a process group ID (**PGID**).
+  - A process group is a collection of one or more processes.
+  - **All the processes in the same group can receive signals from the same Terminal**.
+  - **Each group has a leader**, and the **PGID has the same value as the leader's PID**.
+- A session is **a collection of one or more groups**.
+  - A new session can be created by calling the `setsid` method.
+  - A session can have a (single) controlling Terminal.
+  - The `ps -efj` command shows all the processes running with the PID, PPID, and PGID, and the controlling Terminal (TTY) info for each process:

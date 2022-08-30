@@ -7,6 +7,7 @@ https://github.com/PacktPublishing/C-System-Programming-Cookbook/blob/master/Cha
 #include <sys/signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -83,3 +84,38 @@ int demo() {
   return 0;
 }
 }  // namespace process_kill
+
+namespace process_deamon {
+int demo() {
+  // When a parent creates a child process, the file mode creation mask is
+  // inherited (that is, the child process will inherit the initial access
+  // permission of the parent). We want to make sure we reset them.
+  umask(0);
+
+  std::cout << "pid=" << getpid() << "(parent) - before fork\n";
+  auto child = fork();
+  if (child == -1) {
+    std::cout << "pid=" << getpid() << "(parent) - fork failed\n";
+    return -1;
+  } else if (child == 0) {
+    std::cout << "pid=" << getpid() << "(child) - before becoming deamon\n";
+    // setsid does three things:
+    // - The child process becomes the leader of a newly created session.
+    // - It becomes the leader of a new process group.
+    // - It gets disassociated from its controlling Terminal
+    // e.g. setsid is mandatory to make a process to be deamon
+    setsid();
+    // chdir() changes the current working directory of the calling
+    // process to the directory specified in path.
+    // why doing this? The parent process might run in a temporary (or mounted)
+    // folder that might not exist for long. It's a good practice to set the
+    // current folder to meet the long-term expectations of the daemon process.
+    if (chdir("/") < 0) std::cout << "Couldn't change directory" << std::endl;
+    // Attach here the daemon specific long running tasks ...  like sleep
+    sleep(10);
+  }
+
+  // after the parent has created the child process, it returns.
+  return 0;
+}
+}  // namespace process_deamon
