@@ -21,16 +21,42 @@
 - [code example](demo/pipe.h)
 
 ## FIFO
-- The second IPC mechanism in the table is the FIFO (or named pipe).
+- Also notes from [NETWORKWORLD](https://www.networkworld.com/article/3251853/why-use-named-pipes-on-linux.html)
+- The second IPC mechanism in the table is the FIFO (or **named pipe**).
   - It is a named pipe as it **requires a pathname to be created**, and indeed, it is **a special kind of a file**.
   - This makes the FIFO usable by **any processes even without a relationship between them.**
   - All they need is the path of the FIFO (likewise, a filename) that all the process will use.
+  - One of the key differences between regular pipes and named pipes is that named pipes have a presence in the file system. That is, they show up as files. But unlike most files, they never appear to have contents. Even if you write a lot of data to a named pipe, the file appears to be empty.
+- Notice the FIFO special file has a file type designation of "p" and the file length of zero.
+  - You can write to a named pipe by redirecting output to it and the length will still be zero.
+  - Once read, the contents of the pipe are gone.
+```bash
+$ mkfifo mypipe
+ls -l mypipe
+prw-r--r-- 1 cshao staff 0 Aug 31 22:58 mypipe
+echo "12345" > mypipe &
+[1] 94272
+cat mypipe
+12345
+[1]  + 94272 done       echo "12345" > mypipe
+```
 - **Synchronization is not required** in this case either.
   - We have to be careful, though, as there are cases where synchronization is required, as the man page specifies.
   - The general rule is that, if you have any doubts about how much data exchange should happen between the processes, always provide a synchronization mechanism (for example, mutex, semaphores, and many others).
   - A FIFO (likewise, a pipe) provides a half-duplex communication mechanism **unless two FIFOs are provided for each process (one reader and one writer for each process);** in that case, it would make it a full-duplex communication.
   - FIFOs are **typically** used for IPC between **processes on the same machine** but, as it is based on files, if the file is visible by other machines, a FIFO could **potentially** be used for IPC between processes on different machines.
   - Even in this case, the kernel is involved in the IPC, with **data copied from kernel space to the user space of the processes.**
+- FIFOs are different; they are special pipes that exist as a special file on the filesystem.
+  - In contrast - Pipes are temporary, when no process has them open, they cease to exist.
+- In principle, any process, assuming it has the right permissions, can access a FIFO.
+- FIFO-distinctive characteristic: Using files allows us to program a more general communication mechanism to put processes in communication, even without an ancestor relationship; or, in other words, we can use FIFO to get any two files to communicate.
+- A FIFO is managed internally by the kernel with the FIFO policy.
+  - Every time we write or read data from/to the FIFO, the data is passed from/to the kernel.
+- Named pipes are used infrequently for a good reason. On Unix systems, there are almost always many ways to do pretty much the same thing.
+  - For one thing, **named pipe content resides in memory rather than being written to disk.**
+  - It is passed only when both ends of the pipe have been opened. And you can write to a pipe multiple times before it is opened at the other end and read.
+  - By using named pipes, you can establish a process in which one process writes to a pipe and another reads from a pipe without much concern about trying to time or carefully orchestrate their interaction.
+  - You can set up a process that simply waits for data to appear at the output end of the pipe and then works with it when it does
 
 ## message queue
 - A message queue is a **linked list of messages stored in the kernel**.
