@@ -57,6 +57,7 @@ cat mypipe
   - It is passed only when both ends of the pipe have been opened. And you can write to a pipe multiple times before it is opened at the other end and read.
   - By using named pipes, you can establish a process in which one process writes to a pipe and another reads from a pipe without much concern about trying to time or carefully orchestrate their interaction.
   - You can set up a process that simply waits for data to appear at the output end of the pipe and then works with it when it does
+- a named pipe (FIFO) can be used in N to M communication types (that is, multiple readers and multiple writers). The **kernel guarantees the atomicity of the operations** (read and write calls) if the preceding conditions are met
 
 ## message queue
 - A message queue is a **linked list of messages stored in the kernel**.
@@ -65,6 +66,8 @@ cat mypipe
 - The Linux **kernel guarantees the atomicity of the operations on the queue** if the message is smaller than or equal to `pipe_BUF`.
 - In that case, a synchronization mechanism is required.
 - A message queue **cannot** be used outside the scope of **a machine**.
+- When `mq_send` is called - the Linux kernel makes a copy of the message to send from the user space to the kernel space.
+- When `mq_receive` is called - the Linux kernel makes a copy of the message from the kernel space to the user space
 
 ## shared memory
 - This is the fastest form of IPC.
