@@ -1,7 +1,8 @@
 #include "demo/process.h"
 #include "demo/pipe.h"
 #include "demo/fifo.h"
-//#include "demo/message_queue.h" // can't compile in mac...
+//#include "demo/message_queue.h" // can't compile on mac...
+//#include "demo/shared_mem.h" // can compile but failed to run on mac
 
 int main() {
     //process_fork::demo();
@@ -10,4 +11,6 @@ int main() {
     //pipe_playground::demo();
     //fifo_playground::demo();
     //msg_queue_playground::demo<true>();
+    //shared_mem_playground::demo<true>();
+    //shared_mem_playground::demo<false>();
 }

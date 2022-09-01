@@ -70,7 +70,7 @@ cat mypipe
 - When `mq_receive` is called - the Linux kernel makes a copy of the message from the kernel space to the user space
 
 ## shared memory
-- This is the fastest form of IPC.
+- This is the fastest form of IPC - it does not require the kernel as the mediator between processes.
 - This comes with a cost, in the sense that the processes using shared memory should use **a form of synchronization** (for example, mutexes or semaphores), as the man page suggests (man `shm_overview`).
 - Processes must be running on the **same machine** to use the same shared memory, and it is identified with a key, likewise for message queues.
 - As **the shared memory resides in the kernel space**, data is copied from the kernel space to the processes that read and delete it.
