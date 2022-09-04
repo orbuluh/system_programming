@@ -28,3 +28,21 @@
    a. Ignore the signal: (there are signals that cannot be ignored, for example, SIGKILL)
    b. Perform the default action as listed above
    c. Handle the signal with the registered function (which the system developer implemented).
+
+# What does happen to signals when a process forks (or executes) another one?
+| Signal Behavior	  | `fork`ed child	| `exec`ed child 	|
+|---	              |---	            |---	            |
+|Default            |Inherited        |Inherited        |
+|Ignored            |Inherited        |Inherited        |
+|Customized handler |Inherited        |NOT Inherited    |
+
+- when a process forks another process, the child essentially inherits all the behaviors of the parent.
+- When a process executes another task (with `exec`), it **inherits the default behavior and the ignored behavior,but it does not inherit the handled method that is implemented.**
+
+# send a signal to another process
+
+- In order to send a signal to another process (or processes), the sending process must have appropriate privileges. (A process can send signals to another process if the current user owns it.)
+- There might be cases where a process has to send a signal to itself. In this case, the system call, `raise()`, does the job
+- Note: The handler code that manages the signal raised must be **reentrant**.
+  - A function is **reentrant** if the data manipulated is** allocated on the stack or passed in the input.**
+  - The rationale behind that is that the process might be in the middle of any processing, so the **handler must be very careful in modifying any static or global data.**
