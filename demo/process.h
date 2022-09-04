@@ -1,7 +1,9 @@
+#pragma once
 /*
 modified from
 https://github.com/PacktPublishing/C-System-Programming-Cookbook/blob/master/Chapter03/process_01.cpp
 */
+#pragma once
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/signal.h>

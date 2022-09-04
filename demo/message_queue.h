@@ -1,3 +1,4 @@
+#pragma once
 /*
 modified from
 https://github.com/PacktPublishing/C-System-Programming-Cookbook/blob/master/Chapter06/mq_chat_user_1.c
