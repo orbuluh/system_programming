@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 #add_definitions(-DRW=1)
 #add_definitions(-DWR=1)
+#add_definitions(-DTCP_SERVER=1)
+#add_definitions(-DTCP_CLIENT=1)
 
 include_directories("demo")
 
@@ -23,3 +25,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "playground")
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "rw")
 #set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "wr")
+
+#set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "tcpserver")
+#set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "tcpclient")

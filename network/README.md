@@ -64,3 +64,8 @@
   - Set SO_REUSEADDR flag on outging connections.
   - Check bind() for `EADDRINUSE` errors, in case we run out of available ports.
   - Check connect() for `EADDRNOTAVAIL` errors in case there is a connection conflict and retry if necessary.
+
+- The port info is a 16 bits unsigned integer value (that is, unsigned int), is maintained by the IANA (https://www.iana.org/) and is split into these ranges:
+  - 0-1023: Well-known ports. Ports that are well known, for example, HTTP, SFTP, and HTTPS.
+  - 1024-49151: Registered ports. Ports that organizations can ask to register for their purpose.
+  - 49152-65535: Dynamic, private, or ephemeral ports. Free to be used.
