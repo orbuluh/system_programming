@@ -1,10 +1,10 @@
-#include "demo/process.h"
-#include "demo/pipe.h"
-#include "demo/fifo.h"
-//#include "demo/message_queue.h" // can't compile on mac...
-//#include "demo/shared_mem.h" // can compile but failed to run on mac
-#include "demo/signal_handling.h"
-#include "demo/tcp_svr_client.h"
+#include "process.h"
+#include "pipe.h"
+#include "fifo.h"
+//#include "message_queue.h" // can't compile on mac...
+//#include "shared_mem.h" // can compile but failed to run on mac
+#include "signal_handling.h"
+#include "tcp_svr_client.h"
 
 int main() {
     //process_fork::demo();

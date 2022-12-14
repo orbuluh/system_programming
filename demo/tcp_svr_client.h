@@ -8,7 +8,7 @@ https://github.com/PacktPublishing/C-System-Programming-Cookbook/blob/master/Cha
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <cstring>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>

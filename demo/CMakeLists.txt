@@ -1,5 +1,7 @@
-set(CMAKE_C_COMPILER    "/usr/bin/clang")
-set(CMAKE_CXX_COMPILER  "/usr/bin/clang++")
+#set(CMAKE_C_COMPILER    "/usr/bin/clang")
+#set(CMAKE_CXX_COMPILER  "/usr/bin/clang++")
+set(CMAKE_C_COMPILER    "/usr/bin/gcc")
+set(CMAKE_CXX_COMPILER  "/usr/bin/g++")
 
 cmake_minimum_required(VERSION 3.14)
 project(system_programming VERSION 0.1.0)

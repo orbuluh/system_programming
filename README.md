@@ -1,4 +1,9 @@
-# [Operating systems](operating_systems.md)
-# [Process](process.md)
-# [Inter process communication (IPC)](ipc.md)
-# [Network](network/README.md)
+# System programming notes
+
+## [Operating systems](notes/operating_systems.md)
+
+## [Process](notes/process.md)
+
+## [Inter process communication (IPC)](notes/ipc.md)
+
+## [Network](notes/network/README.md)
