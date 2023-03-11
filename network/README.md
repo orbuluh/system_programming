@@ -1,4 +1,13 @@
-# [What's the Difference Between `localhost` and `127.0.0.1`?](https://phoenixnap.com/kb/localhost-vs-127-0-0-1)
+# Networking
+
+> Sources:
+> - 
+
+
+
+## Random topics
+
+### [What's the Difference Between `localhost` and `127.0.0.1`?](https://phoenixnap.com/kb/localhost-vs-127-0-0-1)
 
 - `localhost` is an alias used to refer to IP addresses **reserved for loopback.**
   - While IPv4 uses the last block of class A addresses (from `127.0.0.1` to `127.255.255`)
@@ -13,7 +22,8 @@
   - On the other hand, running `127.0.0.1` does pass through the network card, which may be affected by firewall settings and configurations.
 
 
-# [How linux kernel does the source port allocation](https://idea.popcount.org/2014-04-03-bind-before-connect/)
+### [How linux kernel does the source port allocation](https://idea.popcount.org/2014-04-03-bind-before-connect/)
+
 - To establish a connection BSD API requires two steps: first you need to create a socket, then call connect() on it
 ![wiki TCP socket flow diagram](https://upload.wikimedia.org/wikipedia/commons/a/a1/InternetSocketBasicDiagram_zhtw.png)
 - When a connection is made the operating system needs to select an unused source port number. Linux selects **a port from an ephemeral port range**, which by default is a set to range from 32768 to 61000:
