@@ -187,16 +187,46 @@ The most important program in the set is called the **kernel**. It is loaded int
 
 ### Kernel Architecture
 
-- As stated before, most Unix kernels are monolithic: each kernel layer is integrated into the whole kernel program and runs in Kernel Mode on behalf of the current process. In contrast, microkernel operating systems demand a very small set of functions from the kernel, generally including a few synchronization primitives, a simple scheduler, and an interprocess communication mechanism. Several system processes that run on top of the microkernel implement other operating system–layer functions, like memory allocators, device drivers, and system call handlers. Although academic research on operating systems is oriented toward microkernels, such operating systems are generally slower than monolithic ones, because the explicit message passing between the different layers of the operating system has a cost. However, microkernel operating systems might have some theoretical advantages over monolithic ones. Microkernels force the system programmers to adopt a modularized approach, because each operating system layer is a relatively independent program that must interact with the other layers through well-defined and clean software interfaces. Moreover, an existing microkernel operating system can be easily ported to other architectures fairly easily, because all hardware-dependent components are generally encapsulated in the microkernel code. Finally, microkernel operating systems tend to make better use of random access memory (RAM) than monolithic ones, because system processes that aren’t implementing needed functionalities might be swapped out or destroyed. To achieve many of the theoretical advantages of microkernels without introducing performance penalties, the Linux kernel offers modules. A module is an object file whose code can be linked to (and unlinked from) the kernel at runtime. The object code usually consists of a set of functions that implements a filesystem, a device driver, or other features at the kernel’s upper layer. The module, unlike the external layers of microkernel operating systems, does not run as a specific process. Instead, it is executed in Kernel Mode on behalf of the current process, like any other statically linked kernel function. The main advantages of using modules include: A modularized approach Because any module can be linked and unlinked at runtime, system programmers must introduce well-defined software interfaces to access the data structures handled by modules. This makes it easy to develop new modules. Platform independence Even if it may rely on some specific hardware features, a module doesn’t depend on a fixed hardware platform. For example, a disk driver module that relies on the SCSI standard works as well on an IBM-compatible PC as it does on Hewlett-Packard’s Alpha. Frugal main memory usage A module can be linked to the running kernel when its functionality is required and unlinked when it is no longer useful; this is quite useful for small embedded systems. No performance penalty Once linked in, the object code of a module is equivalent to the object code of the statically linked kernel. Therefore, no explicit message passing is required when the functions of the module are invoked
+
+- In operating systems, the **kernel** is the core component that manages system resources and provides services to other programs.
+- A monolithic kernel is a type of kernel architecture in which **all kernel services run in the same address space, sharing the same memory and hardware resources.**
+  - This means that **all kernel code and device drivers are loaded and executed in a single, unified kernel space.**
+- In contrast, a microkernel architecture separates kernel services into individual, standalone processes, **each with its own address space, and uses inter-process communication mechanisms to provide services to other processes.**
+  - microkernel operating systems demand a very small set of functions from the kernel, generally including a few synchronization primitives, a simple scheduler, and an interprocess communication mechanism. Several system processes that run on top of the microkernel implement other operating system–layer functions, like memory allocators, device drivers, and system call handlers.
+  - Although academic research on operating systems is oriented toward microkernels, such operating systems are **generally slower than monolithic ones**, because the explicit message passing between the different layers of the operating system has a cost.
+  - However, microkernel operating systems might have some **theoretical advantages** over monolithic ones.
+    - Microkernels **force the system programmers to adopt a modularized approach**, because each operating system layer is a relatively independent program that must interact with the other layers through well-defined and clean software interfaces.
+    - Moreover, an existing microkernel operating system can be **easily ported to other architectures fairly easily, because all hardware-dependent components are generally encapsulated in the microkernel code.**
+    - Finally, microkernel operating systems tend to make better use of random access memory (RAM) than monolithic ones, because **system processes that aren’t implementing needed functionalities might be swapped out or destroyed.**
+
+- As stated before, most Unix kernels are monolithic:
+  - **each kernel layer is integrated into the whole kernel program and runs in Kernel Mode on behalf of the current process.**
+
+## Linux modules
+
+- To achieve many of the theoretical advantages of microkernels without introducing performance penalties, **the Linux kernel offers modules.**
+- A **module** is an object file whose code **can be linked to (and unlinked from) the kernel at runtime.**
+- The object code usually consists of a set of functions that implements a filesystem, a device driver, or other features at **the kernel’s upper layer**.
+- The module, unlike the external layers of microkernel operating systems, does not run as a specific process. Instead, **it is executed in Kernel Mode on behalf of the current process, like any other statically linked kernel function.**
+- The main advantages of using modules include:
+  - **A modularized approach**:
+    - Because any module can be linked and unlinked at runtime, **system programmers must introduce well-defined software interfaces to access the data structures handled by modules.** This makes it easy to develop new modules.
+  - **Platform independence**:
+    - Even if it may rely on some specific hardware features, **a module doesn’t depend on a fixed hardware platform.**
+    - For example, a disk driver module that relies on the SCSI standard works as well on an IBM-compatible PC as it does on Hewlett-Packard’s Alpha.
+  - **Frugal main memory usage**
+    - **A module can be linked to the running kernel when its functionality is required and unlinked when it is no longer useful; this is quite useful for small embedded systems.**
+  - **No performance penalty**
+    - **Once linked in, the object code of a module is equivalent to the object code of the statically linked kernel.** Therefore, no explicit message passing is required when the functions of the module are invoked
 
 
 ## An Overview of the Unix Filesystem
 
-The Unix operating system design is centered on its filesystem, which has several
-interesting characteristics. We’ll review the most significant ones, since they will be
-mentioned quite often in forthcoming chapters.
-Files
-A Unix file is an information container structured as a sequence of bytes; the kernel
-does not interpret the contents of a file. Many programming libraries implement
-higher-level abstractions, such as records structured into fields and record addressing based on keys. However, the programs in these libraries must rely on system calls
-offered by the kernel. From the user’s point of view, files are organized in a treestructured namespace, as shown in Figure 1-1
+The Unix operating system design is centered on its filesystem.
+
+### Files
+
+- **A Unix file is an information container structured as a sequence of bytes**;
+- the **kernel does not interpret the contents of a file**.
+- Many **programming  libraries implement higher-level abstractions**, such as records structured into fields and record addressing based on keys.
+- However, the **programs in these libraries must rely on system calls offered by the kernel.**
