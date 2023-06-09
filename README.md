@@ -6,6 +6,11 @@
 
 ## [:book: Understanding the Linux Kernel](notes/understanding_the_linux_kernel/READEME.md)
 
+## [:book: Linkers and Loaders](notes/understanding_the_linux_kernel/READEME.md)
+
+
+https://www.amazon.com/Linkers-Kaufmann-Software-Engineering-Programming/dp/1558604960
+
 
 ## [Operating systems](notes/operating_systems.md)
 
