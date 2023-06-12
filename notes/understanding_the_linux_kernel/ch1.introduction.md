@@ -412,3 +412,389 @@ The Unix operating system design is centered on its filesystem.
   - Because it runs in Kernel Mode, the corresponding program must be considered part of the kernel.
 
 ## Process Implementation
+
+- To let the kernel manage processes, each process is represented by a **process descriptor** that includes information about the current state of the process.
+- When the kernel **stops** the execution of a process, it saves the current contents of **several processor registers** in the process descriptor. These include:
+  - The program counter (PC) and stack pointer (SP) registers
+  - The general purpose registers
+  - The floating point registers
+  - The processor control registers (Processor Status Word) containing information about the CPU state
+  - The memory management registers used to keep track of the RAM accessed by the process
+- When the kernel decides to resume executing a process, it uses the proper process descriptor fields to load the CPU registers.
+- Because the stored value of the program counter points to the instruction following the last instruction executed, the process resumes execution at the point where it was stopped.
+- When a process is not executing on the CPU, it is waiting for some event.
+- Unix kernels **distinguish many wait states**, which are usually implemented by **queues of process descriptors**; **each (possibly empty) queue corresponds to the set of processes waiting for a specific event.**
+
+## Reentrant Kernels
+
+- All Unix kernels are reentrant. This means that **several processes may be executing in Kernel Mode at the same time.**
+  - Of course, on uniprocessor systems, only one process can progress, but many can be blocked in Kernel Mode when waiting for the CPU or the completion of some I/O operation.
+  - For instance, after issuing a read to a disk on behalf of a process, the kernel lets the disk controller handle it and resumes executing other processes.
+  - An interrupt notifies the kernel when the device has satisfied the read, so the former process can resume the execution.
+
+- One way to provide reentrancy is to write functions so that they **modify only local variables** and do not alter global data structures. Such functions are called reentrant functions.
+- But a reentrant kernel is not limited only to such reentrant functions (although that is how some real-time kernels are implemented). Instead, the kernel can include nonreentrant functions and use locking mechanisms to ensure that only one process can execute a nonreentrant function at a time.
+- If a hardware interrupt occurs, a reentrant kernel is able to suspend the current running process even if that process is in Kernel Mode. This capability is very important, because it improves the throughput of the device controllers that issue interrupts.
+- Once a device has issued an interrupt, it waits until the CPU acknowledges it. If the kernel is able to answer quickly, the device controller will be able to perform other tasks while the CPU handles the interrupt.
+
+
+## kernel reentrancy's impact on the organization of the kernel.
+
+- A **kernel control path** denotes the sequence of instructions executed by the kernel to handle a system call, an exception, or an interrupt.
+- In the simplest case, the CPU executes a kernel control path sequentially from the first instruction to the last.
+- When one of the following events occurs, however, the CPU interleaves the kernel control paths:
+  - A process executing in User Mode invokes a system call, and the corresponding kernel control path verifies that the request cannot be satisfied immediately;
+    - it then invokes the scheduler to select a new process to run. As a result, a process switch occurs.
+    - The first kernel control path is left unfinished, and the CPU resumes the execution of some other kernel control path.
+    - In this case, the two control paths are executed on behalf of two different processes.
+  - The CPU detects an exception
+    - for example, access to a page not present in RAM—while running a kernel control path.
+    - The first control path is suspended, and the CPU starts the execution of a suitable procedure.
+    - This type of procedure can allocate a new page for the process and read its contents from disk. When the procedure terminates, the first control path can be resumed.
+    - In this case, the two control paths are executed on behalf of the same process.
+  - A hardware interrupt occurs while the CPU is running a kernel control path with the interrupts enabled.
+    - The first kernel control path is left unfinished, and the CPU starts processing another kernel control path to handle the interrupt.
+    - The first kernel control path resumes when the interrupt handler terminates.
+    - In this case, the two kernel control paths run in the execution context of the same process, and the total system CPU time is accounted to it.
+    - However, the interrupt handler doesn’t necessarily operate on behalf of the process.
+  - An interrupt occurs while the CPU is running with kernel preemption enabled, and a higher priority process is runnable.
+    - In this case, the first kernel control path is left unfinished, and the CPU resumes executing another kernel control path on behalf of the higher priority process.
+    - This occurs only if the kernel has been compiled with kernel preemption support.
+
+Figure 1-3 illustrates a few examples of noninterleaved and interleaved kernel control paths. Three different CPU states are considered:
+• Running a process in User Mode (Us
+• Running an exception or a system ca
+• Running an interrupt handler (Intr)
+
+## Process Address Space
+(CHECK FIG.1-3)
+Each process runs in its private address space. A process running in User Mode refers
+to private stack, data, and code areas. When running in Kernel Mode, the process
+addresses the kernel data and code areas and uses another private stack.
+Because the kernel is reentrant, several kernel control paths—each related to a different process—may be executed in turn. In this case, each kernel control path refers to
+its own private kernel stack.
+While it appears to each process that it has access to a private address space, there
+are times when part of the address space is shared among processes. In some cases,
+this sharing is explicitly requested by processes; in others, it is done automatically by
+the kernel to reduce memory usage.
+If the same program, say an editor, is needed simultaneously by several users, the
+program is loaded into memory only once, and its instructions can be shared by all of
+the users who need it. Its data, of course, must not be shared, because each user will
+have separate data. This kind of shared address space is done automatically by the
+kernel to save memory.
+Processes also can share parts of their address space as a kind of interprocess communication, using the “shared memory” technique introduced in System V and supported by Linux.
+Finally, Linux supports the mmap( ) system call, which allows part of a file or the
+information stored on a block device to be mapped into a part of a process address
+space. Memory mapping can provide an alternative to normal reads and writes for
+transferring data. If the same file is shared by several processes, its memory mapping
+is included in the address space of each of the processes that share it.
+
+## Synchronization and Critical Regions
+Implementing a reentrant kernel requires the use of synchronization. If a kernel control path is suspended while acting on a kernel data structure, no other kernel control path should be allowed to act on the same data structure unless it has been reset
+to a consistent state. Otherwise, the interaction of the two control paths could corrupt the stored information.
+For example, suppose a global variable V contains the number of available items of
+some system resource. The first kernel control path, A, reads the variable and determines that there is just one available item. At this point, another kernel control path,
+B, is activated and reads the same variable, which still contains the value 1. Thus, B
+decreases V and starts using the resource item. Then A resumes the execution;
+because it has already read the value of V, it assumes that it can decrease V and take
+the resource item, which B already uses. As a final result, V contains –1, and two kernel control paths use the same resource item with potentially disastrous effects.
+When the outcome of a computation depends on how two or more processes are
+scheduled, the code is incorrect. We say that there is a race condition.
+In general, safe access to a global variable is ensured by using atomic operations. In
+the previous example, data corruption is not possible if the two control paths read
+and decrease V with a single, noninterruptible operation. However, kernels contain
+many data structures that cannot be accessed with a single operation. For example, it
+usually isn’t possible to remove an element from a linked list with a single operation,
+because the kernel needs to access at least two pointers at once. Any section of code
+that should be finished by each process that begins it before another process can
+enter it is called a critical region.*
+These problems occur not only among kernel control paths but also among processes sharing common data. Several synchronization techniques have been adopted.
+The following section concentrates on how to synchronize kernel control paths.
+Kernel preemption disabling
+To provide a drastically simple solution to synchronization problems, some traditional Unix kernels are nonpreemptive: when a process executes in Kernel Mode, it
+cannot be arbitrarily suspended and substituted with another process. Therefore, on
+a uniprocessor system, all kernel data structures that are not updated by interrupts or
+exception handlers are safe for the kernel to access.
+Of course, a process in Kernel Mode can voluntarily relinquish the CPU, but in this
+case, it must ensure that all data structures are left in a consistent state. Moreover,
+when it resumes its execution, it must recheck the value of any previously accessed
+data structures that could be changed.
+A synchronization mechanism applicable to preemptive kernels consists of disabling
+kernel preemption before entering a critical region and reenabling it right after leaving the region.
+Nonpreemptability is not enough for multiprocessor systems, because two kernel
+control paths running on different CPUs can concurrently access the same data
+structure.
+Interrupt disabling
+Another synchronization mechanism for uniprocessor systems consists of disabling
+all hardware interrupts before entering a critical region and reenabling them right
+after leaving it. This mechanism, while simple, is far from optimal. If the critical
+region is large, interrupts can remain disabled for a relatively long time, potentially
+causing all hardware activities to freeze.
+Moreover, on a multiprocessor system, disabling interrupts on the local CPU is not
+sufficient, and other synchronization techniques must be used.
+Semaphores
+A widely used mechanism, effective in both uniprocessor and multiprocessor systems, relies on the use of semaphores. A semaphore is simply a counter associated
+with a data structure; it is checked by all kernel threads before they try to access the
+data structure. Each semaphore may be viewed as an object composed of:
+• An integer variable
+• A list of waiting processes
+• Two atomic methods: down( ) and up( )
+The down( ) method decreases the value of the semaphore. If the new value is less
+than 0, the method adds the running process to the semaphore list and then blocks
+(i.e., invokes the scheduler). The up( ) method increases the value of the semaphore
+and, if its new value is greater than or equal to 0, reactivates one or more processes in
+the semaphore list.
+Each data structure to be protected has its own semaphore, which is initialized to 1.
+When a kernel control path wishes to access the data structure, it executes the down( )
+method on the proper semaphore. If the value of the new semaphore isn’t negative,
+access to the data structure is granted. Otherwise, the process that is executing the
+kernel control path is added to the semaphore list and blocked. When another process executes the up( ) method on that semaphore, one of the processes in the semaphore list is allowed to proceed.
+Spin locks
+In multiprocessor systems, semaphores are not always the best solution to the synchronization problems. Some kernel data structures should be protected from being
+concurrently accessed by kernel control paths that run on different CPUs. In this
+case, if the time required to update the data structure is short, a semaphore could be
+very inefficient. To check a semaphore, the kernel must insert a process in the semaphore list and then suspend it. Because both operations are relatively expensive, in
+the time it takes to complete them, the other kernel control path could have already
+released the semaphore.
+In these cases, multiprocessor operating systems use spin locks. A spin lock is very
+similar to a semaphore, but it has no process list; when a process finds the lock
+closed by another process, it “spins” around repeatedly, executing a tight instruction
+loop until the lock becomes open.
+Of course, spin locks are useless in a uniprocessor environment. When a kernel control path tries to access a locked data structure, it starts an endless loop. Therefore,
+the kernel control path that is updating the protected data structure would not have
+a chance to continue the execution and release the spin lock. The final result would
+be that the system hangs.
+Avoiding deadlocks
+Processes or kernel control paths that synchronize with other control paths may easily enter a deadlock state. The simplest case of deadlock occurs when process p1
+gains access to data structure a and process p2 gains access to b, but p1 then waits
+for b and p2 waits for a. Other more complex cyclic waits among groups of processes also may occur. Of course, a deadlock condition causes a complete freeze of
+the affected processes or kernel control paths.
+As far as kernel design is concerned, deadlocks become an issue when the number of
+kernel locks used is high. In this case, it may be quite difficult to ensure that no deadlock state will ever be reached for all possible ways to interleave kernel control paths.
+Several operating systems, including Linux, avoid this problem by requesting locks in
+a predefined order.
+Signals and Interprocess Communication
+Unix signals provide a mechanism for notifying processes of system events. Each
+event has its own signal number, which is usually referred to by a symbolic constant
+such as SIGTERM. There are two kinds of system events:
+Asynchronous notifications
+For instance, a user can send the interrupt signal SIGINT to a foreground process
+by pressing the interrupt keycode (usually Ctrl-C) at the terminal.
+Synchronous notifications
+For instance, the kernel sends the signal SIGSEGV to a process when it accesses a
+memory location at an invalid address.
+The POSIX standard defines about 20 different signals, 2 of which are user-definable
+and may be used as a primitive mechanism for communication and synchronization
+among processes in User Mode. In general, a process may react to a signal delivery in
+two possible ways:
+• Ignore the signal.
+• Asynchronously execute a specified procedure (the signal handler).
+If the process does not specify one of these alternatives, the kernel performs a default
+action that depends on the signal number. The five possible default actions are:
+• Terminate the process.
+• Write the execution context and the contents of the address space in a file (core
+dump) and terminate the process.
+• Ignore the signal.
+• Suspend the process.
+• Resume the process’s execution, if it was stopped.
+Kernel signal handling is rather elaborate, because the POSIX semantics allows processes to temporarily block signals. Moreover, the SIGKILL and SIGSTOP signals cannot be directly handled by the process or ignored.
+AT&T’s Unix System V introduced other kinds of interprocess communication
+among processes in User Mode, which have been adopted by many Unix kernels:
+semaphores, message queues, and shared memory. They are collectively known as System V IPC.
+The kernel implements these constructs as IPC resources. A process acquires a
+resource by invoking a shmget( ), semget( ), or msgget( ) system call. Just like files,
+IPC resources are persistent: they must be explicitly deallocated by the creator process, by the current owner, or by a superuser process.
+Semaphores are similar to those described in the section “Synchronization and Critical Regions,” earlier in this chapter, except that they are reserved for processes in
+User Mode. Message queues allow processes to exchange messages by using the
+msgsnd( ) and msgrcv( ) system calls, which insert a message into a specific message
+queue and extract a message from it, respectively.
+The POSIX standard (IEEE Std 1003.1-2001) defines an IPC mechanism based on
+message queues, which is usually known as POSIX message queues. They are similar
+to the System V IPC’s message queues, but they have a much simpler file-based interface to the applications.
+Shared memory provides the fastest way for processes to exchange and share data. A
+process starts by issuing a shmget( ) system call to create a new shared memory having a required size. After obtaining the IPC resource identifier, the process invokes
+the shmat( ) system call, which returns the starting address of the new region within
+the process address space. When the process wishes to detach the shared memory
+from its address space, it invokes the shmdt( ) system call. The implementation of
+shared memory depends on how the kernel implements process address spaces.
+Process Management
+Unix makes a neat distinction between the process and the program it is executing.
+To that end, the fork( ) and _exit( ) system calls are used respectively to create a
+new process and to terminate it, while an exec( )-like system call is invoked to load a
+new program. After such a system call is executed, the process resumes execution
+with a brand new address space containing the loaded program.
+The process that invokes a fork( ) is the parent, while the new process is its child.
+Parents and children can find one another because the data structure describing each
+process includes a pointer to its immediate parent and pointers to all its immediate
+children.
+A naive implementation of the fork( ) would require both the parent’s data and the
+parent’s code to be duplicated and the copies assigned to the child. This would be
+quite time consuming. Current kernels that can rely on hardware paging units follow the Copy-On-Write approach, which defers page duplication until the last
+moment (i.e., until the parent or the child is required to write into a page). We shall
+describe how Linux implements this technique in the section “Copy On Write” in
+Chapter 9.
+The _exit( ) system call terminates a process. The kernel handles this system call by
+releasing the resources owned by the process and sending the parent process a
+SIGCHLD signal, which is ignored by default.
+Zombie processes
+How can a parent process inquire about termination of its children? The wait4( ) system call allows a process to wait until one of its children terminates; it returns the
+process ID (PID) of the terminated child.
+When executing this system call, the kernel checks whether a child has already terminated. A special zombie process state is introduced to represent terminated processes: a process remains in that state until its parent process executes a wait4( )
+system call on it. The system call handler extracts data about resource usage from the
+process descriptor fields; the process descriptor may be released once the data is collected. If no child process has already terminated when the wait4( ) system call is
+executed, the kernel usually puts the process in a wait state until a child terminates.
+Many kernels also implement a waitpid( ) system call, which allows a process to wait
+for a specific child process. Other variants of wait4( ) system calls are also quite
+common.
+It’s good practice for the kernel to keep around information on a child process until
+the parent issues its wait4( ) call, but suppose the parent process terminates without
+issuing that call? The information takes up valuable memory slots that could be used
+to serve living processes. For example, many shells allow the user to start a command in the background and then log out. The process that is running the command shell terminates, but its children continue their execution.
+The solution lies in a special system process called init, which is created during system initialization. When a process terminates, the kernel changes the appropriate
+process descriptor pointers of all the existing children of the terminated process to
+make them become children of init. This process monitors the execution of all its
+children and routinely issues wait4( ) system calls, whose side effect is to get rid of all
+orphaned zombies.
+Process groups and login sessions
+Modern Unix operating systems introduce the notion of process groups to represent a
+“job” abstraction. For example, in order to execute the command line:
+$ ls | sort | more
+a shell that supports process groups, such as bash, creates a new group for the three
+processes corresponding to ls, sort, and more. In this way, the shell acts on the three
+processes as if they were a single entity (the job, to be precise). Each process descriptor includes a field containing the process group ID. Each group of processes may
+have a group leader, which is the process whose PID coincides with the process group
+ID. A newly created process is initially inserted into the process group of its parent.
+Modern Unix kernels also introduce login sessions. Informally, a login session contains all processes that are descendants of the process that has started a working session on a specific terminal—usually, the first command shell process created for the
+user. All processes in a process group must be in the same login session. A login session may have several process groups active simultaneously; one of these process
+groups is always in the foreground, which means that it has access to the terminal.
+The other active process groups are in the background. When a background process
+tries to access the terminal, it receives a SIGTTIN or SIGTTOUT signal. In many command shells, the internal commands bg and fg can be used to put a process group in
+either the background or the foreground.
+Memory Management
+Memory management is by far the most complex activity in a Unix kernel. More
+than a third of this book is dedicated just to describing how Linux handles memory
+management. This section illustrates some of the main issues related to memory
+management.
+Virtual memory
+All recent Unix systems provide a useful abstraction called virtual memory. Virtual
+memory acts as a logical layer between the application memory requests and the
+hardware Memory Management Unit (MMU). Virtual memory has many purposes
+and advantages:
+• Several processes can be executed concurrently.
+• It is possible to run applications whose memory needs are larger than the available physical memory.
+• Processes can execute a program whose code is only partially loaded in memory.
+• Each process is allowed to access a subset of the available physical memory.
+• Processes can share a single memory image of a library or program.
+• Programs can be relocatable—that is, they can be placed anywhere in physical
+memory.
+• Programmers can write machine-independent code, because they do not need to
+be concerned about physical memory organization.
+The main ingredient of a virtual memory subsystem is the notion of virtual address
+space. The set of memory references that a process can use is different from physical
+memory addresses. When a process uses a virtual address,* the kernel and the MMU
+cooperate to find the actual physical location of the requested memory item.
+Today’s CPUs include hardware circuits that automatically translate the virtual
+addresses into physical ones. To that end, the available RAM is partitioned into page
+frames—typically 4 or 8 KB in length—and a set of Page Tables is introduced to specify how virtual addresses correspond to physical addresses. These circuits make
+memory allocation simpler, because a request for a block of contiguous virtual
+addresses can be satisfied by allocating a group of page frames having noncontiguous
+physical addresses.
+Random access memory usage
+All Unix operating systems clearly distinguish between two portions of the random
+access memory (RAM). A few megabytes are dedicated to storing the kernel image (i.e.,
+the kernel code and the kernel static data structures). The remaining portion of RAM is
+usually handled by the virtual memory system and is used in three possible ways:
+• To satisfy kernel requests for buffers, descriptors, and other dynamic kernel data
+structures
+• To satisfy process requests for generic memory areas and for memory mapping
+of files
+• To get better performance from disks and other buffered devices by means of
+caches
+Each request type is valuable. On the other hand, because the available RAM is limited, some balancing among request types must be done, particularly when little available memory is left. Moreover, when some critical threshold of available memory is
+reached and a page-frame-reclaiming algorithm is invoked to free additional memory,
+which are the page frames most suitable for reclaiming? As we will see in Chapter 17,
+there is no simple answer to this question and very little support from theory. The
+only available solution lies in developing carefully tuned empirical algorithms.
+One major problem that must be solved by the virtual memory system is memory
+fragmentation. Ideally, a memory request should fail only when the number of free
+page frames is too small. However, the kernel is often forced to use physically contiguous memory areas. Hence the memory request could fail even if there is enough
+memory available, but it is not available as one contiguous chunk.
+Kernel Memory Allocator
+The Kernel Memory Allocator (KMA) is a subsystem that tries to satisfy the requests
+for memory areas from all parts of the system. Some of these requests come from
+other kernel subsystems needing memory for kernel use, and some requests come via
+system calls from user programs to increase their processes’ address spaces. A good
+KMA should have the following features:
+• It must be fast. Actually, this is the most crucial attribute, because it is invoked
+by all kernel subsystems (including the interrupt handlers).
+• It should minimize the amount of wasted memory.
+• It should try to reduce the memory fragmentation problem.
+• It should be able to cooperate with the other memory management subsystems
+to borrow and release page frames from them.
+Several proposed KMAs, which are based on a variety of different algorithmic techniques, include:
+• Resource map allocator
+• Power-of-two free lists
+• McKusick-Karels allocator
+• Buddy system
+• Mach’s Zone allocator
+• Dynix allocator
+• Solaris’s Slab allocator
+As we will see in Chapter 8, Linux’s KMA uses a Slab allocator on top of a buddy
+system.
+Process virtual address space handling
+The address space of a process contains all the virtual memory addresses that the
+process is allowed to reference. The kernel usually stores a process virtual address
+space as a list of memory area descriptors. For example, when a process starts the
+execution of some program via an exec( )-like system call, the kernel assigns to the
+process a virtual address space that comprises memory areas for:
+• The executable code of the program
+• The initialized data of the program
+• The uninitialized data of the program
+• The initial program stack (i.e., the User Mode stack)
+• The executable code and data of needed shared libraries
+• The heap (the memory dynamically requested by the program)
+All recent Unix operating systems adopt a memory allocation strategy called demand
+paging. With demand paging, a process can start program execution with none of its
+pages in physical memory. As it accesses a nonpresent page, the MMU generates an
+exception; the exception handler finds the affected memory region, allocates a free
+page, and initializes it with the appropriate data. In a similar fashion, when the process dynamically requires memory by using malloc( ), or the brk( ) system call
+(which is invoked internally by malloc( )), the kernel just updates the size of the heap
+memory region of the process. A page frame is assigned to the process only when it
+generates an exception by trying to refer its virtual memory addresses.
+Virtual address spaces also allow other efficient strategies, such as the Copy On
+Write strategy mentioned earlier. For example, when a new process is created, the
+kernel just assigns the parent’s page frames to the child address space, but marks
+them read-only. An exception is raised as soon as the parent or the child tries to
+modify the contents of a page. The exception handler assigns a new page frame to
+the affected process and initializes it with the contents of the original page.
+Caching
+A good part of the available physical memory is used as cache for hard disks and
+other block devices. This is because hard drives are very slow: a disk access requires
+several milliseconds, which is a very long time compared with the RAM access time.
+Therefore, disks are often the bottleneck in system performance. As a general rule,
+one of the policies already implemented in the earliest Unix system is to defer writing
+to disk as long as possible. As a result, data read previously from disk and no longer
+used by any process continue to stay in RAM.
+This strategy is based on the fact that there is a good chance that new processes will
+require data read from or written to disk by processes that no longer exist. When a
+process asks to access a disk, the kernel checks first whether the required data are in
+the cache. Each time this happens (a cache hit), the kernel is able to service the process request without accessing the disk.
+The sync( ) system call forces disk synchronization by writing all of the “dirty” buffers (i.e., all the buffers whose contents differ from that of the corresponding disk
+blocks) into disk. To avoid data loss, all operating systems take care to periodically
+write dirty buffers back to disk.
+Device Drivers
+The kernel interacts with I/O devices by means of device drivers. Device drivers are
+included in the kernel and consist of data structures and functions that control one
+or more devices, such as hard disks, keyboards, mouses, monitors, network interfaces, and devices connected to an SCSI bus. Each driver interacts with the remaining part of the kernel (even with other drivers) through a specific interface. This
+approach has the following advantages:
+• Device-specific code can be encapsulated in a specific module.
+• Vendors can add new devices without knowing the kernel source code; only the
+interface specifications must be known.
+• The kernel deals with all devices in a uniform way and accesses them through
+the same interface.
+• It is possible to write a device driver as a module that can be dynamically loaded
+in the kernel without requiring the system to be rebooted. It is also possible to
+dynamically unload a module that is no longer needed, therefore minimizing the
+size of the kernel image stored in RAM.
+Figure 1-4 illustrates how device drivers interface with the rest of the kernel and with
+the processes.
