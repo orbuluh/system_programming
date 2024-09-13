@@ -15,7 +15,7 @@
 - [Chapter 11, Signals](), describes how a process may send synchronization signals to other processes.
 - Now we are ready to move on to another essential topic, how Linux implements the filesystem. A series of chapters cover this topic.
 - [Chapter 12, The Virtual Filesystem](), introduces a general layer that supports many different filesystems.
-- Some Linux files are special because they provide trapdoors to reach hardware devices; [Chapter 13, I/O Architecture and Device Drivers](), and
+- Some Linux files are special because they provide trapdoors to reach hardware devices; [Chapter 13, I/O Architecture and Device Drivers](./ch13.io_archi_and_device_driver.md), and
 - [Chapter 14, Block Device Drivers](), offer insights on these special files and on the corresponding hardware device drivers.
 - Another issue to consider is disk access time; [Chapter 15, The Page Cache](), shows how a clever use of RAM reduces disk accesses, therefore improving system performance significantly.
 - Building on the material covered in these last chapters, we can now explain in [Chapter 16, Accessing Files](), how user applications access normal files.
